@@ -85,3 +85,7 @@ class dbworker:
 		#вывод топа по рейтингу
 		with self.connection:
 			return self.cursor.execute('SELECT `telegram_id` FROM `profile_list` ORDER BY `rating` DESC LIMIT 5').fetchall()
+	def count_user(self):
+		#вывод кол-ва юзеров
+		with self.connection:
+			return self.cursor.execute('SELECT COUNT(*) FROM `users`').fetchone()

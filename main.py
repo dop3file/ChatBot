@@ -41,7 +41,8 @@ dp = Dispatcher(bot,storage=MemoryStorage())
 #инициализируем базу данных
 db = dbworker('database.db')
 
-
+#кнопки
+button_aim = KeyboardButton(f'До добавления стикеров осталось {100 - db.count_user()[0]} пользователей')
 
 #хендлер команды /start
 @dp.message_handler(commands=['start'],state='*')
@@ -73,15 +74,33 @@ async def magic_start(message : types.Message):
 
 	button_rating_profile = KeyboardButton('Рейтинг анкет⭐️')
 
+	button_admin = KeyboardButton('Админка⚙️')
+
+	global button_aim
+
+	if int(db.get_info(str(message.from_user.id))[10]) < 51:
+		button_rank = 'инопланетянин обычный👽'
+	elif int(db.get_info(str(message.from_user.id))[10]) < 101:
+		button_rank = 'кик флип🛹'
+	elif int(db.get_info(str(message.from_user.id))[10]) < 151:
+		button_rank = 'пожилой человек👨'
+	elif int(db.get_info(str(message.from_user.id))[10]) < 201:
+		button_rank = 'лучший в мире за работой👀'
+	elif int(db.get_info(str(message.from_user.id))[10]) < 301:
+		button_rank = 'гений мысли отец русской демократии🧠'
+	
+	button_ranked = KeyboardButton(f'Твой ранг - {button_rank}')
+
 	menu = ReplyKeyboardMarkup()
 
 	if(not db.profile_exists(message.from_user.id)):
 			menu.add(button_search,button_create_profile,button_rating_profile)
 	elif(db.profile_exists(message.from_user.id)) :
 		menu.add(button_search,button_edit_profile,button_remove_profile,button_rating_profile)
-		
-
-	await message.answer('Привет-привет, это центральный компьютер чат бота🤖\n\nТут ты можешь управлять всеми этими штуками что внизу',reply_markup=menu)
+	if message.from_user.id in config.ADMIN_LIST:
+		menu.add(button_admin)
+	menu.add(button_aim,button_ranked)
+	await message.answer('Привет-привет, это центральный компьютер чат бота🤖\n\nТут ты можешь управлять всеми этими штуками что внизу⚙️\n\nУ нас также есть ранговая система - получай очки с помощью активностей в чат боте,прокачивай ранги и становись самым свежим в этой шалав... в городе да😎\n\n200 - 300 — гений мысли отец русской демократии🧠\n\n150 - 200 — лучший в мире за работой👀\n\n100 - 150 — пожилой человек👨‍\n\n50 - 100 — кик флип🛹\n\n0 - 50 — инопланетянин обычный👽',reply_markup=menu)
 
 
 #хендлер для создания анкеты
@@ -553,18 +572,39 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 @dp.message_handler(lambda message: message.text == 'Рейтинг анкет⭐️',state='*')
 async def rating_profile(message : types.Message):
 	try:
+		
 		final_top = ''
 		top_count = 0
 		for i in db.top_rating():
 			for d in i:
 				top_count +=1
-				final_top = final_top + str(top_count) + ' место - ' + str(db.get_info(str(d))[3]).title() + ' из города ' + str(db.get_info(str(d))[5]).title() + '\n' 
-		await message.answer(f'Рейтинг самых п#здатых в этом чат боте😎\n\n{final_top}')
+				rofl_list = ['\nебааа#ь ты жёсткий😳','\nвасап👋','\nбро полегче там😮','\nгений🧠','\nреспект🤟']
+				final_top = final_top + str(top_count) + ' место - ' + str(db.get_info(str(d))[3]).title() + ' из города ' + str(db.get_info(str(d))[5]).title() +  rofl_list[top_count-1] + '\n'
+		await message.answer(f'Рейтинг самых п#здатых в этом чат боте😎\nОчки рейтинга получаются с помощью активностей в боте😎\n\n{final_top}')
 	except Exception as e:
 		await message.answer(cus_ans.random_reapeat_list())
 		print(e)
 
+#админка
+@dp.message_handler(lambda message: message.text == 'Админка⚙️')
+async def admin(message : types.Message):
+	if message.from_user.id in config.ADMIN_LIST:
 
+		await message.answer('Для отправки сообщений нужно написать /sendmsg_admin,user_id,msg')
+	else:
+		await message.answer('Отказано в доступе')
+@dp.message_handler(lambda message: message.text.startswith('/sendmsg_admin'),state='*')
+async def admin_send_msg(message : types.Message):
+	if message.from_user.id in config.ADMIN_LIST:
+		msg = message.text.split(',')
+		await bot.send_message(msg[1],msg[2])
+		await message.answer('')
+	else:
+		await message.answer('Отказано в доступе')
+#хендлеры для цели
+@dp.message_handler(lambda message: message.text == button_aim['text'])
+async def aim(message : types.Message):
+	await message.answer('Чё ты по мне тыкаешь я сам по тебе ща тыкну🤬')
 #хендлер который срабатывает при непредсказуемом запросе юзера
 @dp.message_handler()
 async def end(message : types.Message):
