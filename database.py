@@ -46,7 +46,7 @@ class dbworker:
 			else:
 				sex_search = 'мужчина'
 			with self.connection:
-				return self.cursor.execute("SELECT `telegram_id` FROM `profile_list` WHERE `city` = ? AND `sex` = ? AND `age` BETWEEN ? and 54",(city,sex_search,age)).fetchall()
+				return self.cursor.execute("SELECT `telegram_id` FROM `profile_list` WHERE `city` = ? AND `sex` = ? ORDER BY `age` DESC",(city,sex_search)).fetchall()
 		except Exception as e:
 			print(e)
 	def get_info(self,user_id):
@@ -89,3 +89,21 @@ class dbworker:
 		#вывод кол-ва юзеров
 		with self.connection:
 			return self.cursor.execute('SELECT COUNT(*) FROM `users`').fetchone()
+	def report_exists(self,user_id,recipent):
+		#Проверка есть ли репорт в бд
+		with self.connection:	
+			result = self.cursor.execute('SELECT * FROM `reports` WHERE `send` = ? AND `recipient` = ?', (user_id,recipent)).fetchall()
+			return bool(len(result))
+	def throw_report(self,user_id,recipent):
+		#отправка репорта
+		with self.connection:
+			return self.cursor.execute("INSERT INTO `reports` (`send`, `recipient`) VALUES(?,?)", (user_id,recipent))
+	def backup(self,name,age,city,description):
+		#откат действий
+		with self.connection:
+			return self.cursor.execute('SELECT `telegram_id` FROM `profile_list` WHERE `name` = ? AND `age` = ? AND `city` = ? AND `description` = ?', (name,age,city,description)).fetchall()
+	def city_search_exists(self,user_id):
+		#есть ли city search
+		with self.connection:
+			result = self.cursor.execute('SELECT `city_search` FROM `users` WHERE `telegram_id` = ?', (user_id,)).fetchone()
+			return result

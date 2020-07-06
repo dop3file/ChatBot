@@ -9,6 +9,10 @@ else_list = ['Я не знаю, что с этим делать 😲\n\nЯ пр�
 
 aim_rofl_list = ['Чё ты по мне тыкаешь я сам по тебе ща тыкну🤬']
 
+ban_symvols = [',']
+
+available_symvols_age = ['1','2','3','4','5','6','7','8','9','0']
+
 def random_reapeat_list():
 	return random.choice(repeat_list)
 def too_long():

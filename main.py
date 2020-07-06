@@ -37,12 +37,12 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot,storage=MemoryStorage())
 
-
 #инициализируем базу данных
 db = dbworker('database.db')
 
-#кнопки
-button_aim = KeyboardButton(f'До добавления стикеров осталось {100 - db.count_user()[0]} пользователей')
+def aim_stat():
+	button_aim = f'До добавления стикеров осталось {100 - db.count_user()[0]} пользователей'
+	return button_aim
 
 #хендлер команды /start
 @dp.message_handler(commands=['start'],state='*')
@@ -61,7 +61,7 @@ async def start(message : types.Message):
 
 #хендлер для команды Зайти в волшебный мир
 
-@dp.message_handler(lambda message: message.text == 'Зайти в волшебный мир Your Bunny врота🌀',state='*')
+@dp.message_handler(lambda message: message.text == 'Зайти в волшебный мир Your Bunny врота🌀' or message.text == '/magic_start',state='*')
 async def magic_start(message : types.Message):
 	#кнопки меню
 	button_search = KeyboardButton('Найти человечка🔍')
@@ -76,30 +76,28 @@ async def magic_start(message : types.Message):
 
 	button_admin = KeyboardButton('Админка⚙️')
 
-	global button_aim
-
-	if int(db.get_info(str(message.from_user.id))[10]) < 51:
-		button_rank = 'инопланетянин обычный👽'
-	elif int(db.get_info(str(message.from_user.id))[10]) < 101:
-		button_rank = 'кик флип🛹'
-	elif int(db.get_info(str(message.from_user.id))[10]) < 151:
-		button_rank = 'пожилой человек👨'
-	elif int(db.get_info(str(message.from_user.id))[10]) < 201:
-		button_rank = 'лучший в мире за работой👀'
-	elif int(db.get_info(str(message.from_user.id))[10]) < 301:
-		button_rank = 'гений мысли отец русской демократии🧠'
-	
-	button_ranked = KeyboardButton(f'Твой ранг - {button_rank}')
+	button_aim = KeyboardButton(f'До добавления стикеров осталось {100 - db.count_user()[0]} пользователей')
 
 	menu = ReplyKeyboardMarkup()
 
 	if(not db.profile_exists(message.from_user.id)):
 			menu.add(button_search,button_create_profile,button_rating_profile)
 	elif(db.profile_exists(message.from_user.id)) :
-		menu.add(button_search,button_edit_profile,button_remove_profile,button_rating_profile)
+		if int(db.get_info(str(message.from_user.id))[10]) < 51:
+			button_rank = 'инопланетянин обычный👽'
+		elif int(db.get_info(str(message.from_user.id))[10]) < 101:
+			button_rank = 'кик флип🛹'
+		elif int(db.get_info(str(message.from_user.id))[10]) < 151:
+			button_rank = 'пожилой человек👨'
+		elif int(db.get_info(str(message.from_user.id))[10]) < 201:
+			button_rank = 'лучший в мире за работой👀'
+		elif int(db.get_info(str(message.from_user.id))[10]) < 301:
+			button_rank = 'гений мысли отец русской демократии🧠'
+		button_ranked = KeyboardButton(f'Твой ранг - {button_rank}')
+		menu.add(button_search,button_edit_profile,button_remove_profile,button_rating_profile,button_ranked)
 	if message.from_user.id in config.ADMIN_LIST:
 		menu.add(button_admin)
-	menu.add(button_aim,button_ranked)
+	menu.add(button_aim)
 	await message.answer('Привет-привет, это центральный компьютер чат бота🤖\n\nТут ты можешь управлять всеми этими штуками что внизу⚙️\n\nУ нас также есть ранговая система - получай очки с помощью активностей в чат боте,прокачивай ранги и становись самым свежим в этой шалав... в городе да😎\n\n200 - 300 — гений мысли отец русской демократии🧠\n\n150 - 200 — лучший в мире за работой👀\n\n100 - 150 — пожилой человек👨‍\n\n50 - 100 — кик флип🛹\n\n0 - 50 — инопланетянин обычный👽',reply_markup=menu)
 
 
@@ -118,7 +116,7 @@ class CreateProfile(StatesGroup):
 @dp.message_handler(lambda message: message.text == 'Создать анкету📌',state='*')
 async def create_profile(message : types.Message):
 	#кнопки отмены
-	button_exit = KeyboardButton('Назад❌')
+	button_exit = KeyboardButton('Выйти❌')
 
 	menu_exit = ReplyKeyboardMarkup()
 
@@ -135,14 +133,16 @@ async def create_profile(message : types.Message):
 #хендлер для заполнения имя
 @dp.message_handler(state=CreateProfile.name)
 async def create_profile_name(message: types.Message, state: FSMContext):
-	if str(message.text) == 'Назад❌':
+	if str(message.text) == 'Выйти❌':
 		await state.finish()
 		await magic_start(message)
 		return
-	if len(str(message.text)) < 35: 
+	if len(str(message.text)) < 35 and (not str(message.text) in cus_ans.ban_symvols): 
 		await state.update_data(profile_name=message.text.lower())
 		await message.reply(message.text.title() + ' - п*здатое имя😉\nТеперь заполни описание своей личности что бы все поняли кто же ты : \n - инопланетянин👽\n - дурак🤡 \n - гигант мысли🧠 \n - отец русской демократии👪 \n\nбез этого никак прости :9')
 		await CreateProfile.next()
+	elif str(message.text) in cus_ans.ban_symvols:
+		await message.answer('У тебя в сообщении запрещённые символы🤬🤬\nЗапятая к примеру')
 	else:
 		await message.answer(cus_ans.random_reapeat_list())
 		#прерывание функции
@@ -150,29 +150,33 @@ async def create_profile_name(message: types.Message, state: FSMContext):
 #хендлер для заполнение описания
 @dp.message_handler(state=CreateProfile.description)
 async def create_profile_description(message: types.Message, state: FSMContext):
-	if str(message.text) == 'Назад❌':
+	if str(message.text) == 'Выйти❌':
 		await state.finish()
 		await magic_start(message)
 		return
-	if len(message.text) < 35: 
+	if len(message.text) < 35 and (not str(message.text) in cus_ans.ban_symvols): 
 		await state.update_data(profile_description=message.text)
 		await message.answer('Неплохо,неплохо\n\nТеперь предлагаю заполнить город где вы собираетесь трепить🤪')
 		await CreateProfile.next()
+	elif str(message.text) in cus_ans.ban_symvols:
+		await message.answer('У тебя в сообщении запрещённые символы🤬🤬\nЗапятая к примеру')
 	else:
 		await message.answer(cus_ans.random_reapeat_list())
 		#прерывание функции
 		return
 #хендлер для заполнения города 
 @dp.message_handler(state=CreateProfile.city)
-async def create_profile_description(message: types.Message, state: FSMContext):
-	if str(message.text) == 'Назад❌':
+async def create_profile_city(message: types.Message, state: FSMContext):
+	if str(message.text) == 'Выйти❌':
 		await state.finish()
 		await magic_start(message)
 		return
-	if len(message.text) < 35: 
+	if len(message.text) < 35 and (not str(message.text) in cus_ans.ban_symvols): 
 		await state.update_data(profile_city=message.text.lower())
-		await message.answer('Прелестно, теперь добавим фотокарточку, что бы все знали какая ты красавица(хихи)🖼')
+		await message.answer('Прелестно, теперь добавим фотокарточку, что бы все знали какая ты красавица(хихи)🖼\n\nВажно отправлять фотографией, а не файлом!')
 		await CreateProfile.next()
+	elif str(message.text) in cus_ans.ban_symvols:
+		await message.answer('У тебя в сообщении запрещённые символы🤬🤬\nЗапятая к примеру')
 	else:
 		await message.answer(cus_ans.random_reapeat_list())
 		#прерывание функции
@@ -180,7 +184,7 @@ async def create_profile_description(message: types.Message, state: FSMContext):
 #хендлер для заполнения фотографии 
 @dp.message_handler(state=CreateProfile.photo,content_types=['photo'])
 async def create_profile_photo(message: types.Message, state: FSMContext):
-	if str(message.text) == 'Назад❌':
+	if str(message.text) == 'Выйти❌':
 		await state.finish()
 		await magic_start(message)
 
@@ -191,7 +195,7 @@ async def create_profile_photo(message: types.Message, state: FSMContext):
 
 	button_potato = KeyboardButton('Картошка🥔')
 
-	sex_input = ReplyKeyboardMarkup() 
+	sex_input = ReplyKeyboardMarkup(one_time_keyboard=True) 
 	sex_input.add(button_male,button_wooman,button_potato)
 
 	await message.photo[-1].download('photo_user/' + str(message.from_user.id) + '.jpg')
@@ -200,7 +204,7 @@ async def create_profile_photo(message: types.Message, state: FSMContext):
 #хендлер для заполнения пола 
 @dp.message_handler(state=CreateProfile.sex)
 async def create_profile_sex(message: types.Message, state: FSMContext):
-	if str(message.text) == 'Назад❌':
+	if str(message.text) == 'Выйти❌':
 		await state.finish()
 		await magic_start(message)
 		return
@@ -221,7 +225,7 @@ async def create_profile_sex(message: types.Message, state: FSMContext):
 @dp.message_handler(state=CreateProfile.age)
 async def create_profile_age(message: types.Message, state: FSMContext):
 	try:
-		if str(message.text) == 'Назад❌':
+		if str(message.text) == 'Выйти❌':
 			await state.finish()
 			await magic_start(message)
 			return
@@ -244,8 +248,11 @@ async def create_profile_age(message: types.Message, state: FSMContext):
 
 			skip_input = ReplyKeyboardMarkup(one_time_keyboard=True) 
 			skip_input.add(button_skip)
-			await message.answer('За№бись!!\nПоследний шаг - указать ссылку на социальную сеть\nЕсли нет желания - можно пропустить➡🔜',reply_markup=skip_input)
+			await message.answer('За№бись!!\nПоследний шаг - указать ссылку на свой инстаграмм🤑\nЕсли нет желания - можно пропустить➡🔜',reply_markup=skip_input)
 			await CreateProfile.next()
+		else:
+			await answer.message('Укажи правильный возраст, только цифры')
+			return
 	except:
 		await message.answer(cus_ans.random_reapeat_list())
 		#прерывание функции
@@ -254,7 +261,7 @@ async def create_profile_age(message: types.Message, state: FSMContext):
 @dp.message_handler(state=CreateProfile.social_link)
 async def create_profile_social_link(message: types.Message, state: FSMContext):
 	try:
-		if str(message.text) == 'Назад❌':
+		if str(message.text) == 'Выйти❌':
 			await state.finish()
 			await magic_start(message)
 			return
@@ -263,15 +270,16 @@ async def create_profile_social_link(message: types.Message, state: FSMContext):
 			user_data = await state.get_data()
 			db.create_profile(message.from_user.id,message.from_user.username,str(user_data['profile_name']),str(user_data['profile_description']),str(user_data['profile_city']),'photo/' + str(message.from_user.id) + '.jpg',str(user_data['profile_sex']),str(user_data['profile_age']),None) #self,telegram_id,telegram_username,name,description,city,photo,sex,age,social_link
 			await state.finish()
-		elif str(message.text).startswith('https://'):
+			await magic_start(message)
+		elif str(message.text).startswith('https://www.instagram.com/'):
 			await state.update_data(profile_link=message.text)
 			await message.answer('Анкета успешно создана!')
 			user_data = await state.get_data()
 			db.create_profile(message.from_user.id,message.from_user.username,str(user_data['profile_name']),str(user_data['profile_description']),str(user_data['profile_city']),'photo/' + str(message.from_user.id) + '.jpg',str(user_data['profile_sex']),str(user_data['profile_age']),str(user_data['profile_link'])) #self,telegram_id,telegram_username,name,description,city,photo,sex,age,social_link
 			await state.finish()
 			await magic_start(message)
-		if (not str(message.text) == 'Пропустить') and (not str(message.text).startswith('https://')) :
-			await message.answer('Ссылка корявая!!\n\nОна должна начинаться с https://')
+		else :
+			await message.answer('Ссылка корявая!!\n\nОна должна начинаться с https://www.instagram.com/\n\nК примеру - https://www.instagram.com/helloworldbastard/')
 
 			return
 
@@ -307,7 +315,7 @@ async def edit_profile(message : types.Message):
 
 			button_edit_age = KeyboardButton('Изменить количество годиков👶')
 
-			button_cancel = KeyboardButton('Назад❌')
+			button_cancel = KeyboardButton('Выйти❌')
 
 			edit_profile = ReplyKeyboardMarkup(one_time_keyboard=True) 
 			edit_profile.add(button_again,button_edit_description,button_edit_age,button_cancel)
@@ -384,7 +392,8 @@ async def edit_profile_age_step2(message: types.Message, state: FSMContext):
 			user_data = await state.get_data()
 
 			db.edit_age(user_data['edit_profile_age'],str(message.from_user.id))
-			await state.finish()	
+			await state.finish()
+			await edit_profile(message)
 	except Exception as e:
 		await message.answer(cus_ans.random_reapeat_list())
 		print(e)
@@ -403,12 +412,13 @@ async def edit_profile_description_step2(message: types.Message, state: FSMConte
 
 		db.edit_description(user_data['edit_profile_description'],str(message.from_user.id))
 		await state.finish()
+		await edit_profile(message)
 	except Exception as e:
 		await message.answer(cus_ans.random_reapeat_list())
 		print(e)
 		return
 
-@dp.message_handler(lambda message: message.text == 'Назад❌')
+@dp.message_handler(lambda message: message.text == 'Выйти❌')
 async def exit(message : types.Message):
 	await magic_start(message)
 
@@ -448,7 +458,7 @@ async def seach_profile_step2(message: types.Message, state: FSMContext):
 			except:
 				db.edit_zero_profile_status(message.from_user.id)
 				profile_id = db.search_profile(str(db.get_info_user(str(message.from_user.id))[6]),str(db.get_info(str(message.from_user.id))[8]),str(db.get_info(str(message.from_user.id))[7]))[db.search_profile_status(str(message.from_user.id))[0]][0]
-			
+			await state.update_data(last_profile_id=profile_id)
 			db.edit_profile_status(str(message.from_user.id),db.search_profile_status(str(message.from_user.id))[0])
 			
 			#кнопки для оценки
@@ -456,11 +466,13 @@ async def seach_profile_step2(message: types.Message, state: FSMContext):
 
 			button_dislike = KeyboardButton('👎')
 
-			button_exit = KeyboardButton('Назад❌')
+			button_other = KeyboardButton('Всячина👜')
+
+			button_report = KeyboardButton('Репорт👺')
 
 			mark_menu = ReplyKeyboardMarkup()
 
-			mark_menu.add(button_dislike,button_like,button_exit)
+			mark_menu.add(button_dislike,button_like,button_report,button_other)
 
 			name_profile = str(db.get_info(profile_id)[3])
 			age_profile = str(db.get_info(profile_id)[8])
@@ -474,7 +486,6 @@ async def seach_profile_step2(message: types.Message, state: FSMContext):
 
 			await message.answer_photo(photo_profile,caption=final_text_profile,reply_markup=mark_menu)
 
-			
 
 			await SearchProfile.next()
 		else:
@@ -490,7 +501,7 @@ async def seach_profile_step2(message: types.Message, state: FSMContext):
 async def seach_profile_step3(message: types.Message, state: FSMContext):
 	try:
 		if str(message.text) == '👍':
-			if str(message.text) == '/start' or str(message.text) == 'Назад❌':
+			if str(message.text) == '/start' or str(message.text) == 'Выйти❌':
 				await state.finish()
 				await magic_start(message)
 
@@ -505,6 +516,8 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 				print(e)
 				await state.finish()
 				await magic_start(message)
+			await state.update_data(last_profile_id=profile_id)
+			
 			db.edit_profile_status(str(message.from_user.id),db.search_profile_status(str(message.from_user.id))[0])
 			name_profile = str(db.get_info(profile_id)[3])
 			age_profile = str(db.get_info(profile_id)[8])
@@ -524,13 +537,12 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 			social_link_profile_self = str(db.get_info(str(message.from_user.id))[9])
 			photo_profile_self = open('photo_user/' + str(message.from_user.id) + '.jpg','rb')
 
-			city_self = str(user_data['search_profile_city']).title()
-			final_text_profile_self = f'Тобой кто то заинтересовался!\nСам в шоке😮..\n\n{name_profile_self},{age_profile_self},{city_self}\n{description_profile_self}\n\nЧего ты ждёшь,беги знакомиться - @{str(message.from_user.username)}'
+			final_text_profile_self = f'Тобой кто то заинтересовался!\nСам в шоке😮..\n\n{name_profile_self},{age_profile_self},{city}\n{description_profile_self}\n\nЧего ты ждёшь,беги знакомиться - @{str(message.from_user.username)}'
 			await bot.send_photo(profile_id,photo_profile_self,caption=final_text_profile_self)
 			return
 			await state.finish()
 		elif str(message.text) == '👎':
-			if str(message.text) == '/start' or str(message.text) == 'Назад❌':
+			if str(message.text) == '/start' or str(message.text) == 'Выйти❌':
 				await state.finish()
 				await magic_start(message)
 
@@ -545,6 +557,9 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 				print(e)
 				await state.finish()
 				await magic_start(message)
+			
+			await state.update_data(last_profile_id=profile_id)
+
 			db.edit_profile_status(str(message.from_user.id),db.search_profile_status(str(message.from_user.id))[0])
 			name_profile = str(db.get_info(profile_id)[3])
 			age_profile = str(db.get_info(profile_id)[8])
@@ -557,6 +572,49 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 			final_text_profile = f'Смотри, кого для тебя нашёл☺️\n\n{name_profile},{age_profile},{city}\n{description_profile}'
 
 			await message.answer_photo(photo_profile,caption=final_text_profile)
+		elif str(message.text) == 'Репорт👺':
+
+			if str(message.text) == '/start' or str(message.text) == 'Выйти❌':
+				await state.finish()
+				await magic_start(message)
+
+			user_data = await state.get_data()
+
+
+
+			try:
+				profile_id = db.search_profile(str(db.get_info_user(str(message.from_user.id))[6]),str(db.get_info(str(message.from_user.id))[8]),str(db.get_info(str(message.from_user.id))[7]))[db.search_profile_status(str(message.from_user.id))[0]][0]
+			except IndexError:
+				db.edit_zero_profile_status(message.from_user.id)
+				profile_id = db.search_profile(str(db.get_info_user(str(message.from_user.id))[6]),str(db.get_info(str(message.from_user.id))[8]),str(db.get_info(str(message.from_user.id))[7]))[db.search_profile_status(str(message.from_user.id))[0]][0]
+			except Exception as e:
+				print(e)
+				await state.finish()
+				await magic_start(message)
+			#отправка репорта
+			await state.update_data(last_profile_id=profile_id)
+			if(db.report_exists(str(message.from_user.id),user_data['last_profile_id']) == False):
+				db.throw_report(str(message.from_user.id),user_data['last_profile_id'])
+				await message.answer('Репорт отправлен!\nСпасибо за улучшение комьюнити🥰')
+			else:
+				await message.answer('У вас уже есть репорт на данную анкету!\nЧёж вы его так хейтите..😦')
+			db.edit_profile_status(str(message.from_user.id),db.search_profile_status(str(message.from_user.id))[0])
+
+			name_profile = str(db.get_info(profile_id)[3])
+			age_profile = str(db.get_info(profile_id)[8])
+			description_profile = str(db.get_info(profile_id)[4])
+			social_link_profile = str(db.get_info(profile_id)[9])
+			photo_profile = open('photo_user/' + str(profile_id) + '.jpg','rb')
+
+			city = str(user_data['search_profile_city']).title()
+
+			final_text_profile = f'Смотри, кого для тебя нашёл☺️\n\n{name_profile},{age_profile},{city}\n{description_profile}'
+
+			await message.answer_photo(photo_profile,caption=final_text_profile)
+		elif str(message.text) == 'Всячина👜':
+			await other(message)
+		elif str(message.text) == 'Откат действий◀️':
+			await backup(message)
 		else:
 			await state.finish()
 			await magic_start(message)
@@ -593,6 +651,7 @@ async def admin(message : types.Message):
 		await message.answer('Для отправки сообщений нужно написать /sendmsg_admin,user_id,msg')
 	else:
 		await message.answer('Отказано в доступе')
+
 @dp.message_handler(lambda message: message.text.startswith('/sendmsg_admin'),state='*')
 async def admin_send_msg(message : types.Message):
 	if message.from_user.id in config.ADMIN_LIST:
@@ -600,18 +659,126 @@ async def admin_send_msg(message : types.Message):
 		await bot.send_message(msg[1],msg[2])
 		await message.answer('')
 	else:
-		await message.answer('Отказано в доступе')
+		await message.answer('Отказано в доступе') 
+
+#хендлер всячины
+@dp.message_handler(lambda message: message.text == 'Всячина👜')
+async def other(message : types.Message):
+	#кнопки для всякой всячины
+	
+	button_backup = KeyboardButton('Откат действий◀️')
+
+	button_exit = KeyboardButton('Выйти❌')
+
+	menu_other = ReplyKeyboardMarkup()
+
+	menu_other.add(button_exit,button_backup)
+	await message.answer('Тут так же можно выполнить много хитрых и не очень махинаций',reply_markup=menu_other)
+
+
+#класс машины состояний FSM для отката действий
+class Backup(StatesGroup):
+	step1 = State()
+	mark = State()
+
+#хендлер отката действий
+@dp.message_handler(lambda message: message.text == 'Откат действий◀️')
+async def backup(message : types.Message):
+	await message.answer('Часто бывает, что в потоке скучных анкет натыкаешься на “самородок”, но случайно нажимаешь диз по рефлексу.\n\nС помощью этой функции ты сможешь лайкнуть любую анкету!\nПросто перечисли имя,возвраст,город и описание.\n\nПример -  глэк,18,гомель,люблю питсу')
+	await message.answer_sticker('CAACAgIAAxkBAAED6aNfAAFG6dxnzzi3__WF6jWbJ7YPNYsAAkICAAKezgsAAVYiws5K51M1GgQ')
+	await Backup.step1.set()
+
+@dp.message_handler(state=Backup.step1)
+async def backup_step1(message: types.Message, state: FSMContext):
+	try: 
+		if message.text == 'Выйти❌':
+			await magic_start(message)
+			await state.finish()
+		msg_text = message.text
+
+		msg_split = msg_text.split(',')
+
+		name = msg_split[0]
+		age = msg_split[1]
+		city = msg_split[2].lower()
+		description = msg_split[3]
+
+		final = name + age + city + description
+		if len(db.backup(name,age,city,description)) == 1:
+			print(db.backup(name,age,city,description)[0][0])
+			photo_profile_self = open('photo_user/' + db.backup(name,age,city,description)[0][0] + '.jpg','rb')
+			
+			#кнопки для оценки
+			button_like = KeyboardButton('👍')
+
+			button_dislike = KeyboardButton('👎')
+
+			mark_menu_other = ReplyKeyboardMarkup()
+
+			mark_menu_other.add(button_dislike,button_like)
+
+			name_profile = str(db.get_info(db.backup(name,age,city,description)[0][0])[3])
+			age_profile = str(db.get_info(db.backup(name,age,city,description)[0][0])[8])
+			description_profile = str(db.get_info(db.backup(name,age,city,description)[0][0])[4])
+			social_link_profile = str(db.get_info(db.backup(name,age,city,description)[0][0])[9])
+			city = str(db.get_info(db.backup(name,age,city,description)[0][0])[5])
+
+			await state.update_data(last_backup=db.backup(name,age,city,description)[0][0])
+
+			final_text_profile = f'Смотри, кого для тебя нашёл☺️\n\n{name_profile},{age_profile},{city}\n{description_profile}'
+			print(final_text_profile)
+			await message.answer_photo(photo_profile_self,caption=final_text_profile,reply_markup=mark_menu_other)
+			await Backup.next()
+		else:
+			await message.answer('Я не смогу обработать данную анкету!\nВыбери другую!')
+			print(len(db.backup(name,age,city,description)))
+			return
+	except Exception as e:
+		await message.answer('Я не смогу обработать данную анкету!\nВыбери другую!')
+		print(len(db.backup(name,age,city,description)))
+		print(e)
+		return
+
+@dp.message_handler(state=Backup.mark)
+async def backup_step2(message: types.Message, state: FSMContext):
+	user_data = await state.get_data()
+	print('хуй')
+	if str(message.text) == '👍':
+		await message.answer('Ответ отправлен!')
+		
+		photo_self = open(f'photo_user/{message.from_user.id}.jpg','rb')
+		name_profile_self = str(db.get_info(str(message.from_user.id))[3])
+		age_profile_self = str(db.get_info(str(message.from_user.id))[8])
+		description_profile_self = str(db.get_info(str(message.from_user.id))[4])
+		social_link_profile_self = str(db.get_info(str(message.from_user.id))[9])
+		city = str(db.get_info(str(message.from_user.id))[5])
+
+		photo_profile_self = open('photo_user/' + str(message.from_user.id) + '.jpg','rb')
+		
+
+		final_text_profile_self = f'Тобой кто то заинтересовался!\nСам в шоке😮..\n\n{name_profile_self},{age_profile_self},{city}\n{description_profile_self}\n\nЧего ты ждёшь,беги знакомиться - @{str(message.from_user.username)}'
+			
+		await bot.send_photo(str(user_data['last_backup']),photo_self,caption=final_text_profile_self)
+		await state.finish()
+		await magic_start(message)
+	elif message.text == '👎':
+		await message.answer('Ответ отправлен!')
+		await state.finish()
+		await magic_start(message)
+	else:
+		await message.answer('Нет такого варианта ответа!')
+		return
 #хендлеры для цели
-@dp.message_handler(lambda message: message.text == button_aim['text'])
+@dp.message_handler(lambda message: message.text == aim_stat())
 async def aim(message : types.Message):
 	await message.answer('Чё ты по мне тыкаешь я сам по тебе ща тыкну🤬')
+
 #хендлер который срабатывает при непредсказуемом запросе юзера
 @dp.message_handler()
 async def end(message : types.Message):
 	await message.answer('Я не знаю, что с этим делать 😲\nЯ просто напомню, что есть команда /start',parse_mode=ParseMode.MARKDOWN)
-
-
-
+	if message.text == 'Выйти❌':
+		await magic_start(message)
 
 
 
