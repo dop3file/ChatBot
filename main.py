@@ -55,11 +55,13 @@ async def start(message : types.Message):
 	if(not db.user_exists(message.from_user.id)):
 		#если юзера нет в базе добавляем его
 		db.add_user(message.from_user.username,message.from_user.id,message.from_user.full_name)
-
+		await bot.send_message(-1001406772763,f'Новый пользователь!\nID - {str(message.from_user.id)}\nusername - {str(message.from_user.username)}')
 #хендлер для команды Зайти в волшебный мир
 
 @dp.message_handler(lambda message: message.text == 'Зайти в волшебный мир Your Bunny врота🌀' or message.text == '/magic_start',state='*')
 async def magic_start(message : types.Message):
+	'''Функция для меню самого бота'''
+	await send_log(message)
 	#кнопки меню
 	button_search = KeyboardButton('Найти человечка🔍')
 
@@ -144,7 +146,9 @@ async def create_profile_name(message: types.Message, state: FSMContext):
 		await message.answer(cus_ans.random_reapeat_list())
 		#прерывание функции
 		return
+
 #хендлер для заполнение описания
+
 @dp.message_handler(state=CreateProfile.description)
 async def create_profile_description(message: types.Message, state: FSMContext):
 	if str(message.text) == 'Выйти❌':
@@ -289,6 +293,8 @@ async def create_profile_social_link(message: types.Message, state: FSMContext):
 #хендлер для удаления анкеты
 @dp.message_handler(lambda message: message.text == 'Удалить🗑')
 async def delete_profile(message : types.Message):
+	'''Функция для удаления анкеты'''
+	await send_log(message)
 	try:
 		db.delete_profile(message.from_user.id)
 		await message.answer('Анкета успешно удалена!')
@@ -300,6 +306,8 @@ async def delete_profile(message : types.Message):
 #хендлер для редактирования анкеты
 @dp.message_handler(lambda message: message.text == 'Редактировать анкету📝')
 async def edit_profile(message : types.Message):
+	'''Функция для меню редактирования анкеты'''
+	await send_log(message)
 	try:
 		if(not db.profile_exists(message.from_user.id)):
 			await message.answer('У тебя нет анкеты!')
@@ -327,6 +335,8 @@ async def edit_profile(message : types.Message):
 #хендлер для заполнения анкеты заново
 @dp.message_handler(lambda message: message.text == 'Заполнить анкету заново🔄')
 async def edit_profile_again(message : types.Message):
+	'''Функция для заполнения анкеты заново'''
+	await send_log(message)
 	try:
 		db.delete_profile(message.from_user.id)
 		await create_profile(message)
@@ -365,6 +375,8 @@ async def edit_profile_age(message : types.Message):
 		return
 @dp.message_handler(state=EditProfile.age_edit)
 async def edit_profile_age_step2(message: types.Message, state: FSMContext):
+	'''Функция для обновления возвраста в бд'''
+	await send_log(message)
 	try:
 		if str(message.text) == 'Отменить❌':
 			await state.finish()
@@ -396,9 +408,9 @@ async def edit_profile_age_step2(message: types.Message, state: FSMContext):
 		photorint(e)
 		return
 @dp.message_handler(state=EditProfile.description_edit)
-async def edit_profile_description_step2(message: types.Message, state: FSMContext):
-
-
+async def edit_profile_description(message: types.Message, state: FSMContext):
+	'''Функция для обновления описания в бд'''
+	await send_log(message)
 	try:
 		if str(message.text) == 'Отменить❌':
 			await state.finish()
@@ -431,8 +443,8 @@ class SearchProfile(StatesGroup):
 #хендлеры для поиска по анкетам
 @dp.message_handler(lambda message: message.text == 'Найти человечка🔍')
 async def search_profile(message : types.Message):
-
-
+	'''Функция для ввода пользователя своего города,последующей записи в бд'''
+	await send_log(message)
 	try:
 		if db.profile_exists(message.from_user.id) == False:
 			await message.answer('У тебя нет анкеты, заполни её а потом приходи сюда!')
@@ -447,8 +459,8 @@ async def search_profile(message : types.Message):
 
 @dp.message_handler(state=SearchProfile.city_search)
 async def seach_profile_step2(message: types.Message, state: FSMContext):
-
-
+	'''Функция поиска анкет после отправки пользователя своего города'''
+	await send_log(message)
 	try:
 		await state.update_data(search_profile_city=message.text.lower())
 
@@ -502,8 +514,8 @@ async def seach_profile_step2(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=SearchProfile.in_doing)
 async def seach_profile_step3(message: types.Message, state: FSMContext):
-
-
+	'''Функция поиска анкет после отправки пользователя своей оценки(лайк,дизлайк,репорт)'''
+	await send_log(message)
 	try:
 		if str(message.text) == '👍':
 			if str(message.text) == '/start' or str(message.text) == 'Выйти❌':
@@ -522,7 +534,9 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 				await state.finish()
 				await magic_start(message)
 			await state.update_data(last_profile_id=profile_id)
-
+			if db.add_like_exists(str(message.from_user.id),user_data['last_profile_id']) == False:
+				db.add_like(str(message.from_user.id),user_data['last_profile_id'])
+				db.up_rating(db.check_rating(profile_id)[0],user_data['last_profile_id'])
 			db.edit_profile_status(str(message.from_user.id),db.search_profile_status(str(message.from_user.id))[0])
 			name_profile = str(db.get_info(profile_id)[3])
 			age_profile = str(db.get_info(profile_id)[8])
@@ -545,6 +559,8 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 			final_text_profile_self = f'Тобой кто то заинтересовался!\nСам в шоке😮..\n\n{name_profile_self},{age_profile_self},{city}\n{description_profile_self}\n\nЧего ты ждёшь,беги знакомиться - @{str(message.from_user.username)}'
 
 			await bot.send_photo(user_data['last_profile_id'],photo_profile_self,caption=final_text_profile_self)
+
+
 			return
 			await state.finish()
 		elif str(message.text) == '👎':
@@ -636,6 +652,7 @@ async def seach_profile_step3(message: types.Message, state: FSMContext):
 @dp.message_handler(lambda message: message.text == 'Рейтинг анкет⭐️',state='*')
 async def rating_profile(message : types.Message):
 	'''Возвращает рейтинг анкет'''
+	await send_log(message)
 	try:
 		final_top = ''
 		top_count = 0
@@ -671,6 +688,7 @@ async def admin_send_msg(message : types.Message):
 @dp.message_handler(lambda message: message.text == 'Всячина')
 async def other(message : types.Message):
 	'''Функция срабатывает при нажатии на кнопку всячина'''
+	await send_log(message)
 	#кнопки для всякой всячины
 
 	button_backup = KeyboardButton('Откат действий◀️')
@@ -691,12 +709,14 @@ class Backup(StatesGroup):
 #хендлер отката действий
 @dp.message_handler(lambda message: message.text == 'Откат действий◀️')
 async def backup(message : types.Message):
+	await send_log(message)
 	await message.answer('Часто бывает, что в потоке скучных анкет натыкаешься на “самородок”, но случайно нажимаешь диз по рефлексу.\n\nС помощью этой функции ты сможешь лайкнуть любую анкету!\nПросто перечисли имя,возвраст,город и описание.\n\nПример -  глэк,18,гомель,люблю питсу')
 	await message.answer_sticker('CAACAgIAAxkBAAED6aNfAAFG6dxnzzi3__WF6jWbJ7YPNYsAAkICAAKezgsAAVYiws5K51M1GgQ')
 	await Backup.step1.set()
 
 @dp.message_handler(state=Backup.step1)
 async def backup_step1(message: types.Message, state: FSMContext):
+	await send_log(message)
 	try:
 		if message.text == 'Выйти❌':
 			await magic_start(message)
@@ -775,22 +795,24 @@ async def backup_step2(message: types.Message, state: FSMContext):
 	else:
 		await message.answer('Нет такого варианта ответа!')
 		return
-
+	await send_log(message)
 #хендлеры для цели
 @dp.message_handler(lambda message: message.text == aim_stat())
 async def aim(message : types.Message):
 	'''Функция срабатывает при нажатии на кнопку цели'''
 	await message.answer('Чё ты по мне тыкаешь я сам по тебе ща тыкну🤬')
+	await send_log(message)
 
 #хендлер который срабатывает при непредсказуемом запросе юзера
 @dp.message_handler()
 async def end(message : types.Message):
-
-
+	'''Функция непредсказумогого ответа'''
 	await message.answer('Я не знаю, что с этим делать 😲\nЯ просто напомню, что есть команда /start',parse_mode=ParseMode.MARKDOWN)
-	if message.text == 'Выйти❌':
-		await magic_start(message)
+	await send_log(message)
 
+@dp.message_handler(state='*')
+async def send_log(message : types.Message):
+	await bot.send_message(-1001406772763,f'ID - {str(message.from_user.id)}\nusername - {str(message.from_user.username)}\nmessage - {str(message.text)}')
 
 
 executor.start_polling(dp, skip_updates=True)
