@@ -20,3 +20,8 @@
 
 Закончен - 28 июля
 
+# Примеры пользования
+
+![Screenshot](https://sun1.beltelecom-by-minsk.userapi.com/ZJF0w-280rrskh5MgPO314LyW_t2sx3k52aoFA/ERbZDHalR3g.jpg)
+
+![Screenshot](https://sun1.beltelecom-by-minsk.userapi.com/XQ01duOl-tNDtTmg_mzUyb6mNoxTw5_VY6ylhw/IHcIF8hQO_M.jpg)
